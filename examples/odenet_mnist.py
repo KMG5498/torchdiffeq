@@ -125,8 +125,9 @@ class ODEBlock(nn.Module):
 
     def forward(self, x):
         self.integration_time = self.integration_time.type_as(x)
-        out = odeint(self.odefunc, x, self.integration_time, rtol=args.tol, atol=args.tol)
+        out = odeint(self.odefunc, x, self.integration_time, method='euler', rtol=args.tol, atol=args.tol)
         return out[1]
+
 
     @property
     def nfe(self):
