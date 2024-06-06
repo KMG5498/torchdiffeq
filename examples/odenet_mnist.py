@@ -12,7 +12,7 @@ import torchvision.transforms as transforms
 parser = argparse.ArgumentParser()
 parser.add_argument('--network', type=str, choices=['resnet', 'odenet'], default='odenet')
 parser.add_argument('--tol', type=float, default=1e-3)
-parser.add_argument('--adjoint', type=eval, default=True, choices=[True, False])
+parser.add_argument('--adjoint', type=eval, default=False, choices=[True, False])
 parser.add_argument('--downsampling-method', type=str, default='conv', choices=['conv', 'res'])
 parser.add_argument('--nepochs', type=int, default=10)
 parser.add_argument('--data_aug', type=eval, default=True, choices=[True, False])
@@ -27,6 +27,9 @@ args = parser.parse_args()
 
 if args.adjoint:
     from torchdiffeq import odeint_adjoint as odeint
+    # from torchdiffeq import odeint_euler as odeint
+    # from torchdiffeq import odeint_rk4 as odeint
+    #from torchdiffeq import odeint_dopri5 as odeint
 else:
     from torchdiffeq import odeint
 
