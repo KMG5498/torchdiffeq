@@ -26,10 +26,7 @@ parser.add_argument('--gpu', type=int, default=0)
 args = parser.parse_args()
 
 if args.adjoint:
-    #from torchdiffeq import odeint_adjoint as odeint
-    from torchdiffeq import odeint_euler as odeint
-    # from torchdiffeq import odeint_rk4 as odeint
-    #from torchdiffeq import odeint_dopri5 as odeint
+    from torchdiffeq import odeint_adjoint as odeint
 else:
     from torchdiffeq import odeint
 
