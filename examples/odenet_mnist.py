@@ -257,7 +257,7 @@ class CIFAR10Net(nn.Module):
 
 # Main function
 if __name__ == '__main__':
-    makedirs(args.save)
+    os.makedirs(args.save)
     logger = get_logger(logpath=os.path.join(args.save, 'logs'), filepath=os.path.abspath(__file__))
     logger.info(args)
 
