@@ -5,12 +5,9 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-from torchdiffeq import odeint_adjoint as odeint
-
 # Argument parsing
 parser = argparse.ArgumentParser()
 parser.add_argument('--network', type=str, choices=['resnet', 'odenet'], default='odenet')
@@ -37,7 +34,9 @@ def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True
         level = logging.INFO
     logger.setLevel(level)
     if saving:
-        info_file_handler = logging.FileHandler(logpath, mode="a")
+        if not os.path.exists(logpath):  # Check if log directory exists
+            os.makedirs(logpath)  # Create log directory if it doesn't exist
+        info_file_handler = logging.FileHandler(os.path.join(logpath, 'log.txt'), mode="a")
         info_file_handler.setLevel(level)
         logger.addHandler(info_file_handler)
     if displaying:
@@ -45,10 +44,14 @@ def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True
         console_handler.setLevel(level)
         logger.addHandler(console_handler)
     logger.info(filepath)
+    with open(filepath, "r") as f:
+        logger.info(f.read())
+
     for f in package_files:
         logger.info(f)
         with open(f, "r") as package_f:
             logger.info(package_f.read())
+
     return logger
 
 # Define normalization layer (can be BatchNorm or GroupNorm)
@@ -255,9 +258,34 @@ class CIFAR10Net(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# Main function
 if __name__ == '__main__':
-    os.makedirs(args.save)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--network', type=str, choices=['resnet', 'odenet'], default='odenet')
+    parser.add_argument('--tol', type=float, default=1e-3)
+    parser.add_argument('--adjoint', type=eval, default=True, choices=[True, False])
+    parser.add_argument('--downsampling-method', type=str, default='conv', choices=['conv', 'res'])
+    parser.add_argument('--nepochs', type=int, default=10)
+    parser.add_argument('--data_aug', type=eval, default=True, choices=[True, False])
+    parser.add_argument('--lr', type=float, default=0.1)
+    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--test_batch_size', type=int, default=1000)
+    parser.add_argument('--dropout', type=float, default=0.5)  # Added dropout argument
+    parser.add_argument('--save', type=str, default='./experiment1')
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--gpu', type=int, default=0)
+    args = parser.parse_args()
+
+    if args.adjoint:
+        from torchdiffeq import odeint_adjoint as odeint
+    else:
+        from torchdiffeq import odeint
+
+    # Ensure save directory exists
+    try:
+        os.makedirs(args.save, exist_ok=True)
+    except FileExistsError:
+        pass  # Directory already exists, continue without creating a new one
+
     logger = get_logger(logpath=os.path.join(args.save, 'logs'), filepath=os.path.abspath(__file__))
     logger.info(args)
 
