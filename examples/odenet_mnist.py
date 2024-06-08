@@ -12,7 +12,7 @@ import torchvision.transforms as transforms
 parser = argparse.ArgumentParser()
 parser.add_argument('--network', type=str, choices=['resnet', 'odenet'], default='odenet')
 parser.add_argument('--tol', type=float, default=1e-3)
-parser.add_argument('--adjoint', type=eval, default=True, choices=[True, False])
+parser.add_argument('--adjoint', type=eval, default=False, choices=[True, False])
 parser.add_argument('--downsampling-method', type=str, default='conv', choices=['conv', 'res'])
 parser.add_argument('--nepochs', type=int, default=10)
 parser.add_argument('--data_aug', type=eval, default=True, choices=[True, False])
@@ -24,6 +24,43 @@ parser.add_argument('--save', type=str, default='./experiment1')
 parser.add_argument('--debug', action='store_true')
 parser.add_argument('--gpu', type=int, default=0)
 args = parser.parse_args()
+
+"""수정사항"""
+def get_cifar10_loaders(data_aug=False, batch_size=128, test_batch_size=1000, perc=1.0):
+    if data_aug:
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+        ])
+    else:
+        transform_train = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+
+    transform_test = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+
+    train_loader = DataLoader(
+        datasets.CIFAR10(root='.data/cifar10', train=True, download=True, transform=transform_train),
+        batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True
+    )
+
+    train_eval_loader = DataLoader(
+        datasets.CIFAR10(root='.data/cifar10', train=True, download=True, transform=transform_test),
+        batch_size=test_batch_size, shuffle=False, num_workers=2, drop_last=True
+    )
+
+    test_loader = DataLoader(
+        datasets.CIFAR10(root='.data/cifar10', train=False, download=True, transform=transform_test),
+        batch_size=test_batch_size, shuffle=False, num_workers=2, drop_last=True
+    )
+
+    return train_loader, test_loader, train_eval_loader
+
+""" 여기까지 """
+
 
 if args.adjoint:
     from torchdiffeq import odeint_adjoint as odeint
@@ -297,13 +334,23 @@ if __name__ == '__main__':
         ]
     elif args.downsampling_method == 'res':
         downsampling_layers = [
-            nn.Conv2d(1, 64, 3, 1),
-            ResBlock(64, 64, stride=2, downsample=conv1x1(64, 64, 2)),
-            ResBlock(64, 64, stride=2, downsample=conv1x1(64, 64, 2)),
+            nn.Conv2d(3, 64, 3, 1, padding=1),  # CIFAR-10은 RGB 이미지이므로 입력 채널 수를 3으로 수정
+            norm(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, 3, 1, padding=1),
+            norm(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, 3, 1, padding=1),
         ]
 
     feature_layers = [ODEBlock(ODEfunc(64))] if is_odenet else [ResBlock(64, 64) for _ in range(6)]
-    fc_layers = [norm(64), nn.ReLU(inplace=True), nn.AdaptiveAvgPool2d((1, 1)), Flatten(), nn.Linear(64, 10)]
+    fc_layers = [
+    norm(64),
+    nn.ReLU(inplace=True),
+    nn.AdaptiveAvgPool2d((1, 1)),
+    Flatten(),
+    nn.Linear(64, 10)  # CIFAR-10은 10개의 클래스를 가짐
+    ]
 
     model = nn.Sequential(*downsampling_layers, *feature_layers, *fc_layers).to(device)
 
@@ -312,8 +359,8 @@ if __name__ == '__main__':
 
     criterion = nn.CrossEntropyLoss().to(device)
 
-    train_loader, test_loader, train_eval_loader = get_mnist_loaders(
-        args.data_aug, args.batch_size, args.test_batch_size
+    train_loader, test_loader, train_eval_loader = get_cifar10_loaders(
+    args.data_aug, args.batch_size, args.test_batch_size
     )
 
     data_gen = inf_generator(train_loader)
