@@ -309,4 +309,9 @@ for epoch in range(args.nepochs):
             best_acc = val_acc
             torch.save({'state_dict': model.state_dict(), 'args': args}, os.path.join(args.save, 'model.pth'))
 
+# Final test accuracy calculation and logging
+model.eval()
+test_acc = accuracy(model, test_loader)
+logger.info('Final Test Accuracy: {:.4f}'.format(test_acc))
 logger.info('Training complete. Best validation accuracy: {:.4f}'.format(best_acc))
+
